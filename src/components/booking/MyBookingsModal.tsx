@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CalendarCheck,
   Search,
@@ -30,6 +30,17 @@ export const MyBookingsModal: React.FC<MyBookingsModalProps> = ({
   const [filterStatus, setFilterStatus] = useState<'all' | 'confirmed' | 'cancelled'>('all');
   const [cancellationTarget, setCancellationTarget] = useState<string | null>(null);
 
+  // Close modal on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const filteredBookings = confirmedBookings.filter((booking) => {
@@ -51,7 +62,12 @@ export const MyBookingsModal: React.FC<MyBookingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="my-bookings-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+    >
       <div className="bg-[#121824] border border-slate-700/80 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-4 shrink-0">
@@ -60,7 +76,7 @@ export const MyBookingsModal: React.FC<MyBookingsModalProps> = ({
               <CalendarCheck className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-xl font-serif font-bold text-white">
+              <h3 id="my-bookings-modal-title" className="text-xl font-serif font-bold text-white">
                 My Reservations
               </h3>
               <p className="text-xs text-slate-400">

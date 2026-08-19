@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star, Calendar, Sparkles, UserCheck } from 'lucide-react';
 import { Specialist } from '../../types/booking.ts';
 
@@ -18,6 +18,16 @@ export const SpecialistCard: React.FC<SpecialistCardProps> = ({
   onSelectSpecialist,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isModalOpen) {
+        setIsModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isModalOpen]);
 
   return (
     <div className="bg-[#121824]/90 p-5 rounded-2xl border border-slate-800 shadow-lg flex flex-col items-center text-center space-y-4">
@@ -84,12 +94,17 @@ export const SpecialistCard: React.FC<SpecialistCardProps> = ({
 
       {/* Specialists Selection Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="specialists-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+        >
           <div className="bg-[#121824] border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-[#E5B56A]" />
-                <h4 className="text-lg font-serif font-bold text-white">
+                <h4 id="specialists-modal-title" className="text-lg font-serif font-bold text-white">
                   Our Master Specialists
                 </h4>
               </div>
