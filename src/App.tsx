@@ -11,9 +11,9 @@ import { ConfirmationStep } from './components/booking/ConfirmationStep.tsx';
 import {
   MOCK_SERVICES,
   MOCK_SPECIALISTS,
-  generateDailyTimeSlots,
   MOCK_SPA_LOCATION,
 } from './data/mockBookingData.ts';
+import { getAvailableSlotsForSpecialist } from './utils/schedulingEngine.ts';
 import { StepNumber, BookingRecord } from './types/booking.ts';
 import { customerDetailsSchema, CustomerDetailsFormData } from './schemas/bookingSchema.ts';
 import { useBookingStore } from './stores/useBookingStore.ts';
@@ -46,7 +46,7 @@ export default function App(): React.JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const slots = selectedSpecialist
-    ? generateDailyTimeSlots(selectedDate, selectedSpecialist.id)
+    ? getAvailableSlotsForSpecialist(selectedSpecialist, selectedDate, confirmedBookings)
     : [];
 
   const form = useForm<CustomerDetailsFormData>({
