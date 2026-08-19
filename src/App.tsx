@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Navbar } from './components/layout/Navbar.tsx';
@@ -13,53 +13,62 @@ import {
   MOCK_SPECIALISTS,
   generateDailyTimeSlots,
   MOCK_SPA_LOCATION,
-  DEFAULT_SERVICE_FEE,
-  DEFAULT_PROMO_DISCOUNT,
 } from './data/mockBookingData.ts';
-import {
-  Service,
-  Specialist,
-  StepNumber,
-  TimeSlotPeriod,
-  PaymentPreference,
-  BookingRecord,
-} from './types/booking.ts';
+import { StepNumber, BookingRecord } from './types/booking.ts';
 import { customerDetailsSchema, CustomerDetailsFormData } from './schemas/bookingSchema.ts';
+import { useBookingStore } from './stores/useBookingStore.ts';
 
 export default function App(): React.JSX.Element {
-  const [currentStep, setCurrentStep] = useState<StepNumber>(1);
-  const [selectedService, setSelectedService] = useState<Service | null>(MOCK_SERVICES[0]);
-  const [selectedSpecialist, setSelectedSpecialist] = useState<Specialist>(MOCK_SPECIALISTS[0]);
-  const [selectedDate, setSelectedDate] = useState<string>('2025-05-15');
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('12:00 PM');
-  const [selectedPeriod, setSelectedPeriod] = useState<TimeSlotPeriod>('afternoon');
-  const [paymentPreference, setPaymentPreference] = useState<PaymentPreference>('pay_now');
-  const [confirmedBooking, setConfirmedBooking] = useState<BookingRecord | null>(null);
+  const {
+    currentStep,
+    selectedService,
+    selectedSpecialist,
+    selectedDate,
+    selectedTimeSlot,
+    selectedPeriod,
+    customerDetails,
+    paymentPreference,
+    confirmedBookings,
+    activeBookingCode,
+    setStep,
+    setService,
+    setSpecialist,
+    setDate,
+    setTimeSlot,
+    setPeriod,
+    setPaymentPreference,
+    confirmBooking,
+    resetDraft,
+    calculateSummary,
+    setMyBookingsModalOpen,
+  } = useBookingStore();
+
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const slots = generateDailyTimeSlots(selectedDate, selectedSpecialist.id);
+  const slots = selectedSpecialist
+    ? generateDailyTimeSlots(selectedDate, selectedSpecialist.id)
+    : [];
 
   const form = useForm<CustomerDetailsFormData>({
     resolver: zodResolver(customerDetailsSchema),
-    defaultValues: {
-      fullName: 'Emma Johnson',
-      email: 'emma.johnson@email.com',
-      phoneCountryCode: '+39',
-      phoneNumber: '312 345 6789',
-      specialRequests: 'I have sensitive skin, please use gentle products. Thank you!',
-      marketingConsent: true,
-      paymentPreference: 'pay_now',
-    },
+    defaultValues: customerDetails,
     mode: 'onChange',
   });
+
+  // Sync form values if store customerDetails changes
+  useEffect(() => {
+    form.reset(customerDetails);
+  }, [customerDetails, form]);
+
+  const activeBooking = confirmedBookings.find((b) => b.bookingCode === activeBookingCode) || confirmedBookings[0];
 
   const handleNextStep = () => {
     if (currentStep === 1) {
       if (!selectedService) return;
-      setCurrentStep(2);
+      setStep(2);
     } else if (currentStep === 2) {
       if (!selectedTimeSlot) return;
-      setCurrentStep(3);
+      setStep(3);
     } else if (currentStep === 3) {
       form.handleSubmit(onSubmitForm)();
     }
@@ -67,22 +76,16 @@ export default function App(): React.JSX.Element {
 
   const handleBack = () => {
     if (currentStep === 4) {
-      // Reset flow
-      setCurrentStep(1);
-      setConfirmedBooking(null);
+      resetDraft();
     } else if (currentStep > 1) {
-      setCurrentStep((prev) => (prev - 1) as StepNumber);
+      setStep((currentStep - 1) as StepNumber);
     }
   };
 
   const onSubmitForm = (data: CustomerDetailsFormData) => {
-    if (!selectedService || !selectedSpecialist) return;
+    const summary = calculateSummary();
+    if (!summary || !selectedService || !selectedSpecialist) return;
     setIsSubmitting(true);
-
-    const subtotal = selectedService.price + DEFAULT_SERVICE_FEE;
-    const vatRate = 0.22;
-    const vatAmount = subtotal * vatRate;
-    const totalAmount = Math.max(0, subtotal + vatAmount - DEFAULT_PROMO_DISCOUNT);
 
     const randomNum = Math.floor(1000 + Math.random() * 9000);
     const bookingCode = `#AUR-${randomNum}`;
@@ -90,35 +93,8 @@ export default function App(): React.JSX.Element {
     const newBooking: BookingRecord = {
       id: `book-${Date.now()}`,
       bookingCode,
-      customer: {
-        fullName: data.fullName,
-        email: data.email,
-        phoneCountryCode: data.phoneCountryCode,
-        phoneNumber: data.phoneNumber,
-        specialRequests: data.specialRequests,
-        marketingConsent: data.marketingConsent,
-        paymentPreference: data.paymentPreference,
-      },
-      summary: {
-        serviceId: selectedService.id,
-        serviceName: selectedService.name,
-        serviceCategory: selectedService.category,
-        durationMinutes: selectedService.durationMinutes,
-        servicePrice: selectedService.price,
-        serviceFee: DEFAULT_SERVICE_FEE,
-        subtotal,
-        vatRate,
-        vatAmount,
-        promoDiscount: DEFAULT_PROMO_DISCOUNT,
-        totalAmount,
-        specialistId: selectedSpecialist.id,
-        specialistName: selectedSpecialist.name,
-        specialistTitle: selectedSpecialist.title,
-        specialistAvatar: selectedSpecialist.avatarUrl,
-        specialistRating: selectedSpecialist.rating,
-        bookingDate: selectedDate,
-        bookingTime: selectedTimeSlot,
-      },
+      customer: data,
+      summary,
       status: 'confirmed',
       location: MOCK_SPA_LOCATION,
       qrPayload: `AURA-RESERVATION:${bookingCode}:${data.fullName.replace(/\s+/g, '_')}:${selectedDate}:${selectedTimeSlot}`,
@@ -132,9 +108,8 @@ export default function App(): React.JSX.Element {
     };
 
     setTimeout(() => {
-      setConfirmedBooking(newBooking);
+      confirmBooking(newBooking);
       setIsSubmitting(false);
-      setCurrentStep(4);
     }, 400);
   };
 
@@ -142,17 +117,14 @@ export default function App(): React.JSX.Element {
     <div className="min-h-screen bg-[#0B0E14] text-slate-100 flex flex-col selection:bg-[#E5B56A]/20 selection:text-[#E5B56A]">
       {/* 1. Luxury Brand Navbar */}
       <Navbar
-        onNavigateHome={() => setCurrentStep(1)}
-        onOpenMyBookings={() => {
-          if (confirmedBooking) setCurrentStep(4);
-          else alert('No active confirmed booking yet. Complete your reservation first!');
-        }}
+        onNavigateHome={() => setStep(1)}
+        onOpenMyBookings={() => setMyBookingsModalOpen(true)}
       />
 
       {/* 2. Stepper Progress Bar */}
       <BookingStepper
         currentStep={currentStep}
-        onStepClick={(step) => setCurrentStep(step)}
+        onStepClick={(step) => setStep(step)}
         onBack={handleBack}
       />
 
@@ -166,11 +138,11 @@ export default function App(): React.JSX.Element {
                 <ServiceSelectionStep
                   services={MOCK_SERVICES}
                   selectedService={selectedService}
-                  onSelectService={(srv) => setSelectedService(srv)}
+                  onSelectService={(srv) => setService(srv)}
                 />
               )}
 
-              {currentStep === 2 && (
+              {currentStep === 2 && selectedSpecialist && (
                 <DateTimeStep
                   selectedDate={selectedDate}
                   selectedTimeSlot={selectedTimeSlot}
@@ -178,10 +150,10 @@ export default function App(): React.JSX.Element {
                   specialist={selectedSpecialist}
                   allSpecialists={MOCK_SPECIALISTS}
                   slots={slots}
-                  onSelectDate={setSelectedDate}
-                  onSelectSlot={setSelectedTimeSlot}
-                  onSelectPeriod={setSelectedPeriod}
-                  onSelectSpecialist={setSelectedSpecialist}
+                  onSelectDate={setDate}
+                  onSelectSlot={setTimeSlot}
+                  onSelectPeriod={setPeriod}
+                  onSelectSpecialist={setSpecialist}
                 />
               )}
 
@@ -206,21 +178,18 @@ export default function App(): React.JSX.Element {
                 selectedDate={selectedDate}
                 selectedTime={selectedTimeSlot}
                 onContinue={handleNextStep}
-                onEditStep={(step) => setCurrentStep(step)}
+                onEditStep={(step) => setStep(step)}
                 isSubmitting={isSubmitting}
               />
             </div>
           </div>
         ) : (
           /* Step 4: Full Confirmation & Ticket View */
-          confirmedBooking && (
+          activeBooking && (
             <ConfirmationStep
-              booking={confirmedBooking}
-              onViewMyBookings={() => alert(`Showing active reservation ${confirmedBooking.bookingCode}`)}
-              onBookAnother={() => {
-                setCurrentStep(1);
-                setConfirmedBooking(null);
-              }}
+              booking={activeBooking}
+              onViewMyBookings={() => setMyBookingsModalOpen(true)}
+              onBookAnother={() => resetDraft()}
             />
           )
         )}
