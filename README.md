@@ -9,7 +9,7 @@
 [![Oxlint](https://img.shields.io/badge/Linter-Oxlint-orange?style=flat-square)](https://oxc.rs/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
-> **Proyecto 13 del Portafolio Profesional** — Motor de reservas y gestión de citas premium para spa, estética VIP y consultoría de alto nivel. Construido bajo la arquitectura **FORGE-DEV**.
+> **Proyecto 13 del Portafolio Profesional** — Motor de reservas y gestión de citas premium para spa, estética VIP y consultoría de alto nivel.
 
 ---
 
@@ -58,7 +58,6 @@ Combina un **flujo guiado de 4 etapas (Multi-Step Wizard)** con validaciones rea
 │   ├── seed.sql                 # Datos de prueba para profesionales y servicios
 │   └── README.md                # Diagrama DER Mermaid y diccionario de datos
 ├── design/
-│   ├── PROMPTS.md               # Prompts de generación para IA visual
 │   └── design_completo.png      # Mockup visual de referencia
 ├── src/
 │   ├── components/
