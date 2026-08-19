@@ -8,6 +8,7 @@ import { DateTimeStep } from './components/booking/DateTimeStep.tsx';
 import { CustomerDetailsStep } from './components/booking/CustomerDetailsStep.tsx';
 import { BookingSummarySidebar } from './components/booking/BookingSummarySidebar.tsx';
 import { ConfirmationStep } from './components/booking/ConfirmationStep.tsx';
+import { MyBookingsModal } from './components/booking/MyBookingsModal.tsx';
 import {
   MOCK_SERVICES,
   MOCK_SPECIALISTS,
@@ -194,6 +195,16 @@ export default function App(): React.JSX.Element {
           )
         )}
       </main>
+
+      {/* 4. My Bookings Lookup & Management Modal */}
+      <MyBookingsModal
+        isOpen={useBookingStore((s) => s.isMyBookingsModalOpen)}
+        onClose={() => setMyBookingsModalOpen(false)}
+        onSelectBookingForView={(booking) => {
+          useBookingStore.getState().setActiveBookingCode(booking.bookingCode);
+          setStep(4);
+        }}
+      />
     </div>
   );
 }
